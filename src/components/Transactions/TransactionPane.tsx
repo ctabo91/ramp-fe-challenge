@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { InputCheckbox } from "../InputCheckbox"
 import { TransactionPaneComponent } from "./types"
 
@@ -7,7 +7,16 @@ export const TransactionPane: TransactionPaneComponent = ({
   loading,
   setTransactionApproval: consumerSetTransactionApproval,
 }) => {
-  const [approved, setApproved] = useState(transaction.approved)
+  // Used localStorage to store the approval state of a transaction.
+  const localStorageKey = `approved-${transaction.id}`
+
+  const [approved, setApproved] = useState(() => {
+    const storedValue = window.localStorage.getItem(localStorageKey)
+    return storedValue !== null ? JSON.parse(storedValue) : transaction.approved
+  })
+  useEffect(() => {
+    window.localStorage.setItem(localStorageKey, JSON.stringify(approved))
+  }, [approved, localStorageKey])
 
   return (
     <div className="RampPane">
@@ -23,10 +32,16 @@ export const TransactionPane: TransactionPaneComponent = ({
         checked={approved}
         disabled={loading}
         onChange={async (newValue) => {
-          await consumerSetTransactionApproval({
-            transactionId: transaction.id,
-            newValue,
-          })
+          try {
+            await consumerSetTransactionApproval({
+              transactionId: transaction.id,
+              newValue,
+            })
+          } catch (error) {
+            if (error instanceof Error) {
+              alert(error.message)
+            }
+          }
 
           setApproved(newValue)
         }}
